@@ -147,7 +147,14 @@ class AvitoBot(ProxyGet):
         
         
         #***************************************************************************************
-        self.userdict       = {0:'all', 1:'sobstvennik', 2:'agentstvo'}
+        self.category       = args.category
+        if self.category == 'nedvizhimost':
+            self.userdict = {0: 'all', 1: 'sobstvennik', 2: 'agentstvo'}
+            self.marketplace, self.region, self.real_estate      = args.url.split('/')[2:5]
+        elif self.category == 'predlozheniya_uslug': 
+            self.userdict = {0: 'all', 1: 'chastnoe',    2: 'companya'}
+            self.marketplace, self.region, self.uslugi      = args.url.split('/')[2], args.url.split('/')[3], args.url.split('/')[5] 
+        self.query          = args.query
         self.savepath       = Path.joinpath(Path(os.getcwd()), 'screenshots')
         self.savecsv        = Path.joinpath(Path(os.getcwd()), 'csv')
         self.takescreenshot = args.takescreenshot
@@ -158,7 +165,6 @@ class AvitoBot(ProxyGet):
         self.get_wall_soup  = args.get_wall_soup
         self.adv_scrap_soup = args.adv_scrap_soup
         self.findnewadvs, self.daysback    = args.findnewadvs['findnewadvs'], args.findnewadvs['daysback']
-        self.marketplace, self.region, self.real_estate      = args.url.split('/')[2:5]
         #***************************************************************************************
     
     def remdirs(self):
@@ -340,8 +346,8 @@ class AvitoBot(ProxyGet):
     def advert_collect_by_pages(self,url_string,__max,__min):
         __count=0
         url_base_part = url_string
-        query_part    = 'sdam?'
-        page_part     = 'p='
+        query_part    = self.query
+        page_part     = '?p='
         maxminrange   = '&pmax={0:}&pmin={1:}'
         url_str = url_base_part+query_part+page_part+'{2:}'+maxminrange+'&user='+str(self.usertype)
 #         print(url_str.format(__max,__min,1))
@@ -549,8 +555,14 @@ class AvitoBot(ProxyGet):
                     if not any([v is None for v in tmp]):
                         # continue collecting adv info
 #                         collectdata.append([item['href'], item['title'], full_text, phonestr, loctext, sellerinfo])
-                          collectdata.append([item['href'], item['title'], full_text, phonestr]+
-                                             [self.region, item['href'].split('/')[3], self.real_estate, self.userdict[self.usertype], self.marketplace])
+                          if self.category == 'nedvizhimost':  
+                              collectdata.append([item['href'], item['title'], full_text, phonestr]+
+                                                 [self.region, item['href'].split('/')[3], self.real_estate, \
+                                                  self.userdict[self.usertype], self.marketplace])
+                          elif self.category == 'predlozheniya_uslug': 
+                              collectdata.append([item['href'], item['title'], full_text, phonestr]+
+                                                 [self.region, item['href'].split('/')[3], self.uslugi, \
+                                                  self.userdict[self.usertype], self.marketplace])                    
                     else:
                         print("got some unprocessed pages...")
                         print('page: '+item['href'])
@@ -572,7 +584,10 @@ class AvitoBot(ProxyGet):
             # Start writing a data-collection into csv file 
             # Check accurately if file exists.
             #if not os.path.isfile(str(file_path)):
-            headers = ['href', 'title', 'full_text', 'phone', 'region', 'city', 'real_estate', 'type', 'marketplace']
+            if self.category == 'nedvizhimost': 
+                headers = ['href', 'title', 'full_text', 'phone', 'region', 'city', 'real_estate', 'type', 'marketplace']
+            elif self.category == 'predlozheniya_uslug': 
+                headers = ['href', 'title', 'full_text', 'phone', 'region', 'city', 'uslugi', 'type', 'marketplace']
             with open(file_path, 'a', encoding='utf8') as outcsv:   
                 writer = csv.writer(outcsv, delimiter=',', quotechar='"', 
                                     quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
@@ -590,7 +605,7 @@ class AvitoBot(ProxyGet):
     def random_request(self):
         user_agent = self.ua.random            
         self.headers =  {  'user-agent': user_agent,
-                           'referrer': 'https://www.reg.ru/',
+                           'referrer': 'https://m.avito.ru',
                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
                            'Accept-Encoding': 'gzip, deflate, br',
                            'Accept-Language': 'en-US,en;q=0.9',
@@ -607,7 +622,7 @@ class AvitoBot(ProxyGet):
 
         user_agent = self.ua.random            
         self.headers =  {  'user-agent': user_agent,
-                           'referrer': 'https://www.reg.ru/',
+                           'referrer': 'https://m.avito.ru',
                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
                            'Accept-Encoding': 'gzip, deflate, br',
                            'Accept-Language': 'en-US,en;q=0.9',
